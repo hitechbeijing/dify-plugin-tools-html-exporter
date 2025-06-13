@@ -1,7 +1,8 @@
 # html_exporter
 由bowenliang123的md_exporter实现了markdown转docx，我在他的基础上重写方法，实现html转docx
 
-支持以下HTML标签的转换
+<h3>支持以下HTML标签的转换</h3>
+
 ```
 <p></p>
 <div></div>
@@ -26,7 +27,8 @@
 <small></small>
 <ol></ol>
 ```
-支持css样式：
+<h3>支持css样式：</h3>
+
 ```
 front-size
 front-color#RGB、16进制、3位16进制缩写以及英文常见颜色
