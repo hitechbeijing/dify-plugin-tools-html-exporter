@@ -539,7 +539,7 @@ class HtmlToDocxTool(Tool):
         if table_tag.has_attr('style'):
             self.apply_table_styles(table, table_tag['style'])
         else:
-            table.style = 'Table Grid'
+            table.style = 'Normal Table'
 
         for i, row in enumerate(rows):
             cells = row.find_all(['td', 'th'])
@@ -590,7 +590,7 @@ class HtmlToDocxTool(Tool):
         
         # 设置边框合并
         if "border-collapse" in styles and styles["border-collapse"] == "collapse":
-            table.style = "Table Normal"
+            table.style = "Normal Table"
 
     def apply_cell_styles(self, cell: _Cell, style_str: str):
         """应用单元格样式"""
