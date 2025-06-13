@@ -1,0 +1,35 @@
+identity:
+  name: html_to_docx
+  author: hitechbeijing
+  label:
+    en_US: HTML to DOCX file
+    zh_Hans: HTML 转 DOCX 文件
+description:
+  human:
+    en_US: Generate DOCX file from HTML text
+    zh_Hans: 将 HTML 转换为 DOCX 文件的工具
+  llm: Generate DOCX file from HTML text
+parameters:
+  - name: html_text
+    type: string
+    required: true
+    label:
+      en_US: HTML text
+      zh_Hans: HTML格式文本
+    human_description:
+      en_US: HTML text
+      zh_Hans: HTML格式文本
+    form: llm
+  - name: output_filename
+    type: string
+    required: false
+    label:
+      en_US: Filename of the output file
+      zh_Hans: 输出文件名
+    human_description:
+      en_US: Filename of the output file
+      zh_Hans: 输出文件名
+    form: llm
+extra:
+  python:
+    source: tools/html_to_docx/html_to_docx.py
