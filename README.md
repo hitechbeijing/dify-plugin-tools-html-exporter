@@ -38,3 +38,6 @@ margin
 line-height
 text-decoration
 ```
+
+
+>注意：```<span>```标签必须被块级元素包裹才能正确显示
