@@ -26,18 +26,20 @@
 <u></u>
 <small></small>
 <ol></ol>
+<mark></mark>
 ```
 <h3>支持css样式：</h3>
 
 ```
 front-size
-front-color#RGB、16进制、3位16进制缩写以及英文常见颜色
+front-color
 font-weight
 text_align
 margin
 line-height
 text-decoration
+background-color
 ```
-
-
->注意：```<span>```标签必须被块级元素包裹才能正确显示
+<h3>支持完整141色HTML颜色名称 详见：</h3>
+<a href='https://www.runoob.com/tags/html-colorname.html'>HTML颜色名</a>
+<h3>注意：<code>span</code>标签必须被块级元素包裹才能正确显示</h3>
