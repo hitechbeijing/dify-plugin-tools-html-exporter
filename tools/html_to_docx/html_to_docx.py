@@ -5,12 +5,14 @@ from typing import Generator, Dict, Any, Optional, List, Tuple
 
 from bs4 import BeautifulSoup, Tag, NavigableString
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Inches
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 from docx.table import Table, _Cell
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
@@ -90,7 +92,9 @@ class HtmlToDocxTool(Tool):
             'font_size': None,
             'color': None,  # 不再设置默认颜色
             'font_family': None,
-            'line_height': None
+            'line_height': None,
+            'highlight_color': None,  # 文字高亮颜色
+            'background_color': None  # 块级元素背景色
         }
         self._list_level = 0
         self._div_stack = []
@@ -167,6 +171,10 @@ class HtmlToDocxTool(Tool):
             
             # 设置标题对齐方式
             self.set_paragraph_alignment(paragraph, tag)
+            
+            # 应用块级背景色
+            if heading_style.get('background_color'):
+                self.set_paragraph_background(paragraph, heading_style['background_color'])
             return
 
         # 处理段落
@@ -188,6 +196,10 @@ class HtmlToDocxTool(Tool):
             # 处理内容
             self._process_children(doc, paragraph, tag, current_style)
             self._current_paragraph = None
+            
+            # 应用块级背景色
+            if current_style.get('background_color'):
+                self.set_paragraph_background(paragraph, current_style['background_color'])
             return
 
         # 处理表格
@@ -216,12 +228,16 @@ class HtmlToDocxTool(Tool):
             return
 
         # 处理其他块级元素
-        if name not in ['span', 'b', 'strong', 'i', 'em', 'u', 'small', 'font']:
+        if name not in ['span', 'b', 'strong', 'i', 'em', 'u', 'small', 'font', 'mark']:
             text = tag.get_text().strip()
             if text:
                 paragraph = doc.add_paragraph(text)
                 self.set_paragraph_alignment(paragraph, tag)
                 self._current_paragraph = None
+                
+                # 应用块级背景色
+                if current_style.get('background_color'):
+                    self.set_paragraph_background(paragraph, current_style['background_color'])
 
     def _process_children(self, doc: Document, paragraph: Paragraph, parent_tag: Tag, parent_style: Dict[str, Any]):
         """递归处理子节点，维护样式状态"""
@@ -247,6 +263,18 @@ class HtmlToDocxTool(Tool):
                 elif tag_name in ['span', 'font']:
                     # 处理span和font的内联样式 - 无论是否有style属性都处理
                     self._update_style_from_attributes(current_style, child)
+                # 处理 <mark> 标签（高亮文本）
+                elif tag_name == 'mark':
+                    # 设置默认高亮颜色（黄色）
+                    current_style['highlight_color'] = WD_COLOR_INDEX.YELLOW
+                    
+                    # 如果有内联样式，更新样式
+                    if child.has_attr('style'):
+                        self._update_style_from_attributes(current_style, child)
+                    
+                    # 递归处理子元素
+                    self._process_children(doc, paragraph, child, current_style)
+                    continue  # 跳过后续处理，因为已经递归处理了
                 
                 # 处理块级标签（如嵌套的p/div）
                 if tag_name in ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'ul', 'ol']:
@@ -275,6 +303,13 @@ class HtmlToDocxTool(Tool):
                 parsed_color = self._parse_color(color)
                 if parsed_color:
                     style_state['color'] = parsed_color
+            
+            # 背景色（用于块级元素的背景）
+            if "background-color" in styles:
+                bg_color = styles["background-color"].strip()
+                parsed_bg_color = self._parse_color(bg_color)
+                if parsed_bg_color:
+                    style_state['background_color'] = parsed_bg_color
             
             # 字体粗细
             if "font-weight" in styles:
@@ -377,6 +412,40 @@ class HtmlToDocxTool(Tool):
                 except ValueError:
                     pass
 
+    def _map_color_to_highlight(self, color: RGBColor) -> WD_COLOR_INDEX:
+        """将RGB颜色映射到Word的高亮颜色枚举值"""
+        # 黄色高亮（<mark>的默认颜色）
+        if color == RGBColor(255, 255, 0):  # 黄色
+            return WD_COLOR_INDEX.YELLOW
+        
+        # 其他常见颜色的映射
+        color_map = {
+            (255, 0, 0): WD_COLOR_INDEX.RED,        # 红色
+            (0, 255, 0): WD_COLOR_INDEX.BRIGHT_GREEN, # 绿色
+            (0, 0, 255): WD_COLOR_INDEX.BLUE,        # 蓝色
+            (255, 255, 0): WD_COLOR_INDEX.YELLOW,    # 黄色
+            (255, 0, 255): WD_COLOR_INDEX.PINK,      # 粉色
+            (0, 255, 255): WD_COLOR_INDEX.TURQUOISE, # 青绿色
+            (255, 165, 0): WD_COLOR_INDEX.ORANGE,    # 橙色
+        }
+        
+        # 查找最接近的颜色
+        closest_color = None
+        min_distance = float('inf')
+        
+        for rgb, highlight in color_map.items():
+            r, g, b = rgb
+            # 计算颜色距离（欧几里得距离）
+            distance = ((color[0] - r) ** 2 + 
+                        (color[1] - g) ** 2 + 
+                        (color[2] - b) ** 2) ** 0.5
+            
+            if distance < min_distance:
+                min_distance = distance
+                closest_color = highlight
+        
+        return closest_color or WD_COLOR_INDEX.YELLOW  # 默认使用黄色
+
     def _parse_style_string(self, style_str: str) -> Dict[str, str]:
         """解析样式字符串为字典"""
         styles = {}
@@ -425,7 +494,7 @@ class HtmlToDocxTool(Tool):
         'DarkGray': RGBColor(169, 169, 169),
         'DarkGreen': RGBColor(0, 100, 0),
         'DarkKhaki': RGBColor(189, 183, 107),
-        'DarkMagenta': RGBColor(139, 0, 139),
+        'DarkMagena': RGBColor(139, 0, 139),
         'DarkOliveGreen': RGBColor(85, 107, 47),
         'DarkOrange': RGBColor(255, 140, 0),
         'DarkOrchid': RGBColor(153, 50, 204),
@@ -597,6 +666,11 @@ class HtmlToDocxTool(Tool):
         if color:
             run.font.color.rgb = color
         
+        # 应用高亮颜色（文字高亮）
+        highlight_color = style_state.get('highlight_color')
+        if highlight_color:
+            run.font.highlight_color = highlight_color
+        
         # 应用字体
         font_family = style_state.get('font_family')
         if font_family:
@@ -607,6 +681,15 @@ class HtmlToDocxTool(Tool):
         else:
             # 应用默认字体（不设置颜色）
             self.apply_default_font(run)
+
+    def set_paragraph_background(self, paragraph: Paragraph, bg_color: RGBColor):
+        """设置段落背景色（底纹）"""
+        # 创建底纹元素
+        shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{bg_color.rgb_hex}"/>')
+        # 获取段落属性
+        pPr = paragraph._element.get_or_add_pPr()
+        # 添加底纹
+        pPr.append(shd)
 
     def apply_default_font(self, run: Run):
         """应用默认字体（不设置颜色）"""
@@ -728,6 +811,18 @@ class HtmlToDocxTool(Tool):
                     cell.width = Inches(8 * percent) 
                 except ValueError:
                     pass
+        
+        # 设置单元格背景色
+        if "background-color" in styles:
+            bg_color = styles["background-color"].strip()
+            parsed_bg_color = self._parse_color(bg_color)
+            if parsed_bg_color:
+                # 创建底纹元素
+                shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{parsed_bg_color.rgb_hex}"/>')
+                # 获取单元格属性
+                tcPr = cell._tc.get_or_add_tcPr()
+                # 添加底纹
+                tcPr.append(shd)
 
     def handle_list(self, doc: Document, list_tag: Tag, parent_style: Dict[str, Any]):
         """处理 <ul> 或 <ol> 列表标签，支持嵌套和样式"""
@@ -763,6 +858,10 @@ class HtmlToDocxTool(Tool):
             # 解析内联内容
             self._process_children(doc, paragraph, item, style_state)
             self._current_paragraph = None
+            
+            # 应用块级背景色
+            if style_state.get('background_color'):
+                self.set_paragraph_background(paragraph, style_state['background_color'])
 
             # 处理嵌套列表
             nested_lists = item.find_all(['ul', 'ol'], recursive=False)
