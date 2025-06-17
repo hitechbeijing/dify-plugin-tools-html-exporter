@@ -3,28 +3,13 @@ dify_plugin~=0.3.2
 markdown~=3.8.0
 
 # for tables
-pandas[excel,html,xml]~=2.2.3
+pandas[excel,html,xml]~=2.3.0
 
-# for markdown to pdf
-xhtml2pdf~=0.2.17
 
-# for markdown to xml
-lxml>=5.4.0
+# for html to docx
+python-docx~=1.2.0
+beautifulsoup4~=4.13.4
 
-# for markdown to rst
-mistune~=3.1.3
-
-# for markdown to docx
-htmldocx~=0.0.6
-python-docx~=1.1.2
-bs4~=0.0.2
-
-# for markdown to pptx
-python-pptx~=1.0.2
-
-# for markdown to png
-PyMuPDF~=1.26.0
-pillow~=11.2.1
 
 # deprecated 1:
 # markdowntodocx~=0.1.5.10
