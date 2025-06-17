@@ -44,4 +44,11 @@ background-color
 ```
 <h3>支持完整141色HTML颜色名称 详见：</h3>
 <a href='https://www.runoob.com/tags/html-colorname.html'>HTML颜色名</a>
-<h3>注意：<code>span</code>标签必须被块级元素包裹才能正确显示</h3>
+<h3>注意：LLM 生成的HTML需遵循以下规范：</h3>
+<ul>
+  <li>1、文档标题请使用h1-h6的HTML标题标签</li>
+  <li>2、文档段落请使用html p标签</li>
+  <li>3、span、mark标签需放置在块级标签内</li>
+  <li>4、不支持html style标签，css样式请使用html标签style属性</li>
+  <li>5、不支持javascript</li>
+</ul>
