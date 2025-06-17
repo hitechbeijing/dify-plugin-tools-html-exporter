@@ -1,5 +1,7 @@
 # html_exporter
 由bowenliang123的md_exporter实现了markdown转docx，我在他的基础上重写方法，实现html转docx
+<p><img width="1366" alt="image" src="https://github.com/user-attachments/assets/10380232-f855-4b1d-9dd9-4e0f5e9df9aa" /></p>
+
 
 <h3>支持以下HTML标签的转换</h3>
 
